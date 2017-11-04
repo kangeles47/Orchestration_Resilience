@@ -8,9 +8,7 @@
 # Copyright:   (c) Holly Tina Ferguson 2015
 # License:     The University of Notre Dame
 
-# Line 66-71 Below have the directions for asking for an x value along the splines we are able to generate from USGS
-# import pymatlab   # This is the library for interfacing with matlab, you will need to install this through the interpreter page
-# pymatlab documentation: https://pypi.python.org/pypi/pymatlab
+#This is an optimized version of the tool.
 #-------------------------------------------------------------------------------
 
 # #!/usr/bin/python
@@ -87,27 +85,24 @@ def main(argv, other_stuff=0):
     #Essentially, we will be passing vectors into MATLAB for the three curves
     #The "x" subscript refers to spectral acceleration being on the x-axis of the hazard curves
     #The "y" subscript refers to the values for the annual rate of exceedance for the specified spectral accelerations
-    #It should be noted that values of 0 to 5 were chosen for the spectral accelerations simply to cover "enough" accelerations for the different regions we are considering in this project
+    #Since we will be interpolating between three hazard curves within MATLAB, we ask for all data from USGS (i.e. given the initial USGS data points, we are performing a linear interpolation per curve (these are the values we are getting back in this call to city_splines), then we will interpolate over the three hazard curves in MATLAB)
 
 
     #We will begin with PGA for the specified location: Chicago IL
-    x_values=np.linspace(0,5,50)
-    y_values=city_splines["Chicago IL"]["PGA"](x_values)
-    PGAx=matlab.double(list(x_values)) #Spectral acceleration values
-    PGAy=matlab.double(list(y_values)) #Annual Rate of Exceedance values (Note: these values need to be converted in MATLAB)
-    #print(type(SA),type(ARE)) #if uncommented, this will verify that the conversion to a matlab.mlarray.double class was successful
+    values=city_splines["Chicago IL"]["PGA"]
+    PGAx=matlab.double(list(values[0])) #Spectral acceleration values
+    PGAy=matlab.double(list(values[1])) #Annual Rate of Exceedance values (Note: these values need to be converted in MATLAB)
+    #print(type(PGAx),type(PGAy)) #if uncommented, this will verify that the conversion to a matlab.mlarray.double class was successful
 
     #Now we repeat the above procedure for SA1, our spectral acceleration for 1.0 second period:
-    x_values = np.linspace(0, 5, 50)
-    y_values = city_splines["Chicago IL"]["SA1P0"](x_values)
-    SA1x = matlab.double(list(x_values))  # Spectral acceleration values
-    SA1y = matlab.double(list(y_values))  # Annual Rate of Exceedance values (Note: these values need to be converted in MATLAB)
+    values = city_splines["Chicago IL"]["SA1P0"]
+    SA1x = matlab.double(list(values[0]))  # Spectral acceleration values
+    SA1y = matlab.double(list(values[1]))  # Annual Rate of Exceedance values (Note: these values need to be converted in MATLAB)
 
     #One more time for SA02, our spectral acceleration for 0.2 second period:
-    x_values = np.linspace(0, 5, 50)
-    y_values = city_splines["Chicago IL"]["SA0P2"](x_values)
-    SA02x = matlab.double(list(x_values))  # Spectral acceleration values
-    SA02y = matlab.double(list(y_values))  # Annual Rate of Exceedance values (Note: these values need to be converted in MATLAB)
+    values = city_splines["Chicago IL"]["SA0P2"]
+    SA02x = matlab.double(list(values[0]))  # Spectral acceleration values
+    SA02y = matlab.double(list(values[1]))  # Annual Rate of Exceedance values (Note: these values need to be converted in MATLAB)
 
     num_int=float(8) #here we are defining how many intervals (levels of intensity)
 
@@ -184,7 +179,7 @@ def main(argv, other_stuff=0):
         for j in range(len(value_list)): #
             #The idea here is to filter out elevation (z) coordinates by recognizing that these values can be converted into float() type numbers:
             try:
-                elevations.append(float(value_list[j]))
+                elevations.append(float(value_list[j])*12) #making sure that we are in inches
             except ValueError:
                 pass
 
@@ -217,13 +212,30 @@ def main(argv, other_stuff=0):
     #(3) Calculation of Equivalent Lateral Forces for Response Module
 
     eng=matlab.engine.start_matlab() #start MATLAB engine for Python
-    eng.cd(r'D:\Users\Karen\Documents\MATLAB\RSB') #Here you specify path to folder where m-file is located
+    eng.cd(r'D:\Users\Karen\Documents\MATLAB\RSB\GreenResilienceMATLAB_2') #Here you specify path to folder where m-file is located
     #Define input variables for the MATLAB function:
-    FilePath='D:\Users\Karen\Documents\Revit 2017\RC_FRAME' #this is the file path to the full RC Model, needed for pre-analysis function
-    units=3 #Define units
+    FilePath='D:\Users\Karen\Documents\Revit 2017\RC_FRAME_INFILL' #this is the file path to the full RC Model, needed for pre-analysis function
+    units=3 #Define units:
+    #These are all of the possible unit combinations:
+    #lb,in,F=1  lb,ft,F=2   kip,in,F=3  kip,ft,F=4
+    #kN,mm,C=5  kN,m,C=6    kgf,mm,C=7  kgf,m,C=8
+    #N,mm,C=9   N,m,C=10    Ton,mm,C=11 Ton,m,C=12
+    #kN,cm,C=13 kgf,cm,C=14 N,cm,C=15   Ton,cm,C=16
 
+    #User queries to consider wall properties for a frame system:
+    frame_wall_flag=1 #Ask the user if they need to import wall information for frame systems: 0==false, 1==true
 
-    FrameObjNames,JointCoords, FrameJointConn, FloorConn, WallConn, T1,hj, mass_floor, weight,FilePathResponse,lfm,Dl,Sax,Say,Fj=eng.InitHazardModule(FilePath,units,elev,PGAx,PGAy,SA1x,SA1y,SA02x,SA02y,Soil_Site_class,num_int,nargout=15) #here, the format is as follows: output1, output2, etc=eng.NameOfMFile(Input1,Input2,etc), nargout refers to number of outputs
+    #User queries if the structural system is a wall system:
+    struct_wall_flag=1 #Ask the user if they need to consider structural walls: 0==false, 1==true
+    wall_type='Masonry' #This is a query to ask what kind of wall system is being used (leaving as a user-defined option so that we can create a library of options in the future)
+    #Here is the material information we would need from Revit in order to do this:
+    E=0.05*3372.13 #The modulus of elasticity in ksi
+    u=0.17 #Poisson's ratio
+    a=0.00001 #The thermal coefficient
+    rho=150.28 #material density in lb/ft^3
+
+    #Changes here: We are changing the calculation of ELFs so that we only perform one calculation and scale it based on our base shear value
+    FrameObjNames,JointCoords, FrameJointConn, FloorConn, WallConn, T1,hj, mass_floor, weight,Sw,FilePathResponse,lfm,Dl,Sax,Say,Fj,PGA,Sa_1=eng.InitHazardModule(FilePath,units,elev,PGAx,PGAy,SA1x,SA1y,SA02x,SA02y,num_int,frame_wall_flag,struct_wall_flag,wall_type,E,u,a,nargout=18) #here, the format is as follows: output1, output2, etc=eng.NameOfMFile(Input1,Input2,etc), nargout refers to number of outputs
     print("Results: Hazard Module")
     print("Connectivity Data From SAP:")
     print("Joint Names and Coordinates:",JointCoords)
@@ -234,39 +246,44 @@ def main(argv, other_stuff=0):
     print("Period in the x and y:",T1)
     print("mass per floor:",mass_floor)
     print("total weight of structure:",weight)
+    print("seismic weight:",Sw)
     print("Equivalent Lateral Forces:")
     print(Fj)
+    print("PGA:",PGA)
+    print("Sa_1:",Sa_1)
     print("END OF HAZARD MODULE")
 
     #This is the end of the Hazard Module: We now have our Equivalent Static Forces for num_int intensities to conduct our response analysis
 
     ####################################################################################################################
     #################################BEGINNING OF RESPONSE MODULE#######################################################
-    print("BEGINNING RESPONSE MODULE")
+    print("BEGINNING RESPONSE AND DAMAGE MODULES")
     print("Running ELFM")
     #We are now going to implement our equivalent lateral forces from the Hazard Module onto our structure to obtain the response:
     g = float(386)  # here we are defining gravity for in/s^2
     Frame_type='Moment' #here we are defining the type of frame we are analyzing
 
     eng2=matlab.engine.start_matlab() #start MATLAB engine for Python
-    eng2.cd(r'D:\Users\Karen\Documents\MATLAB\RSB') #Here you specify path to folder where m-file is located
-    x_disp, y_disp, mean_drift_ratios, mean_accel, B_SD, B_FA, B_FV, B_RD = eng2.InitResponseModule(FrameObjNames,units,FilePathResponse,elev,Fj,num_int,T1,hj,g,PGAx,PGAy,SA1x,SA1y,lfm,Frame_type,nargout=8)
+    eng2.cd(r'D:\Users\Karen\Documents\MATLAB\RSB\GreenResilienceMATLAB_2') #Here you specify path to folder where m-file is located
+    x_disp, y_disp, m_drift_ratios, m_vel_ratios,m_accel, b_SD, b_FA, b_FV, b_RD,Cost = eng2.InitResponseDamageModule(FrameObjNames,units,FilePathResponse,elev,Fj,num_int,T1,hj,g,PGA,Sa_1,Sax,Say,lfm,Frame_type,Soil_Site_class,Sw,weight,nargout=10)
     print("Displacements for All Intensities from SAP")
     print("Displacements in the x:",x_disp)
     print("Displacements in the y:",y_disp)
     print("Actual Displacements and Accelerations (Corrected)")
-    print("drifts:",mean_drift_ratios)
-    print("accelerations:",mean_accel)
+    print("drifts:",m_drift_ratios)
+    print("velocities:",m_vel_ratios)
+    print("accelerations:",m_accel)
     print('Dispersions')
-    print("B_SD:",B_SD)
-    print("B_FA:", B_FA)
-    print("B_FV:",B_FV)
-    print("B_RD:",B_RD)
-    print("END OF RESPONSE MODULE")
+    print("B_SD:",b_SD)
+    print("B_FA:", b_FA)
+    print("B_FV:",b_FV)
+    print("B_RD:",b_RD)
+    print("Cost:",Cost)
+    print("END OF RESPONSE AND DAMAGE MODULES")
 
     ####################################################################################################################
     #################################BEGINNING OF DAMAGE MODULE#######################################################
-    print("BEGINNING DAMAGE MODULE")
+    #print("BEGINNING DAMAGE MODULE")
     #If you need to define a string object, simply type in as follows (without the # at the beginning):
     #variable='StringObject'
     #If you need to pass through a scalar:
@@ -276,15 +293,15 @@ def main(argv, other_stuff=0):
 
 
     #Make our third call to MATLAB from Python:
-    eng3= matlab.engine.start_matlab()  # start MATLAB engine for Python
-    eng3.cd(r'D:\Users\Karen\Documents\MATLAB\RSB')  # Here you specify path to folder where m-file is located
+    #eng3= matlab.engine.start_matlab()  # start MATLAB engine for Python
+    #eng3.cd(r'D:\Users\Karen\Documents\MATLAB\RSB')  # Here you specify path to folder where m-file is located
     #Basic setup here is output variables = nameoffunction(input variables, output number)
     #So if you need to add more output variables, update nargout value
     #If you need to add more input variables, just add them
     #the only big thing is to make sure that your input/output matches that in your MATLAB file and vice versa
-    Cost = eng3.InitDamageModule(mean_drift_ratios,mean_accel,B_SD,B_FA,B_FV,B_RD,num_int,nargout=1) #here nargout is simply the amount of outputs you are asking for
+   # Cost = eng3.InitDamageModule(mean_drift_ratios,mean_accel,B_SD,B_FA,B_FV,B_RD,num_int,nargout=1) #here nargout is simply the amount of outputs you are asking for
     #if you need to print anything just use the print() function. You can also leave variables uncommented in MATLAB and they will show up below
-    print(Cost)
+    #print(Cost)
 
 
 
@@ -304,6 +321,7 @@ if __name__ == "__main__":
     #logging.basicConfig()
     main(sys.argv[1:])
     #main(inputfile, outputfile)
+
 
 
 
