@@ -8,7 +8,7 @@
 # Copyright:   (c) Holly Tina Ferguson 2015
 # License:     The University of Notre Dame
 
-#This is an optimized version of the tool.
+#This is an optimized version of the tool. Includes an initial call to GreenScale.
 #-------------------------------------------------------------------------------
 
 # #!/usr/bin/python
