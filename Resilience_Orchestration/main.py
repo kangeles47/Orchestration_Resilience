@@ -61,9 +61,9 @@ def ReadHazardData(model_names,base_directory):
     return hazard_data
 
 def main(argv, other_stuff=0):
-
+    print "==================================================================================="
     print "Orchestration Main Started"
-    print("BEGINNING HAZARD MODULE")
+    print("################# COLLECTING HAZARD INFORMATION ##################")
     print("Gathering data from USGS")
     # Take USGS data sets (3 curves) for a location and get back........................................................
     basedir = "C:\\Users\\Karen\\Desktop\\USGS_Resilience-master\\USGS_Resilience-master\\nshmp-haz-master\\curve-making-code\\curves_east_donotmodify"
@@ -192,18 +192,32 @@ def main(argv, other_stuff=0):
     #for i in spaces1:
         #print i, len(spaces1[i]), spaces1[i]
 
-
     # Call Green Scale..................................................................................................
-    # Running t-he GS Tool (it has been updated to 2016 Revit) will need ot be added as this project progresses
-    GreenScale_InitialRun = 0 # Change flag once first run is complete
+    # Running t-he GS Tool (it has been updated to 2016 Revit) will need to be added as this project progresses
+    GreenScale_InitialRun = 0  # Change flag once first run is complete
     # Currently using locally stored files, will need to add this API automation from my scrips from Drive
     # Note, in script, will need to reset the location of the stored file to be findable by this next lines
-    #inputfileGBXML = Call API script using IronPython
-    inputfileGBXML = 'C:/Users/Karen/Desktop/Resilience_Orchestration-master/Resilience_Orchestration-master/TempXMLs/bRC_FRAME_Concrete_allComponents.ifcxml'
-    #Call GS Code (will run Thermal and EE), will want to store results plus return a dictinoary of EE values
+    # inputfileGBXML = Call API script using IronPython
+    # inputfileGBXML = 'C:/Users/Karen/Desktop/Resilience_Orchestration-master/Resilience_Orchestration-master/TempXMLs/bRC_FRAME_Concrete_allComponents.ifcxml'
+    # Call GS Code (will run Thermal and EE), will want to store results plus return a dictinoary of EE values
+
+    # Call Green Scale without Revit API:
+    print "==================================================================================="
+    print('################ INITIAL SUSTAINABILITY ASSESSMENT #################')
+    print('Running GreenScale')
+    inputfile = 'D:/Users/Karen/Documents/Revit 2016/GreenScale Trials/RC_FRAME.xml'
+    outputpath = 'C:/Users/Karen/Desktop/GreenScale Project/GreenScale Project/Installer/GS/Output/'
+    model_flag = '3'
+    dev_flag = "1"
+    shadowflag = "0"
+    locationfile = 'C:/Users/Karen/Desktop/GreenScale Project/GreenScale Project/Installer/GS/Locations/USA_IL_Chicago-OHare.Intl.AP.725300_TMY31.epw'
+    subprocess.call(["python", "C:/Users/Karen/Desktop/GreenScale Project/GreenScale Project/Installer/GS/main.py", str(inputfile),str(outputpath), str(model_flag), str(dev_flag), str(shadowflag), str(locationfile)])
+    print "==================================================================================="
+    print "==================================================================================="
 
 
     # Query for pre-analysis Matlab Module..............................................................................
+    print('################ MODAL ANALYSIS #################')
     print("Beginning MATLAB-SAP API: Modal Analysis")
     # Call Matlab Modules as needed:
     #We call one function, InitHazardModule, in order to conduct the following:
@@ -252,12 +266,13 @@ def main(argv, other_stuff=0):
     print("PGA:",PGA)
     print("Sa_1:",Sa_1)
     print("END OF HAZARD MODULE")
+    print "==================================================================================="
 
     #This is the end of the Hazard Module: We now have our Equivalent Static Forces for num_int intensities to conduct our response analysis
 
     ####################################################################################################################
     #################################BEGINNING OF RESPONSE MODULE#######################################################
-    print("BEGINNING RESPONSE AND DAMAGE MODULES")
+    print('################ BEGINNING RESPONSE AND DAMAGE MODULES #################')
     print("Running ELFM")
     #We are now going to implement our equivalent lateral forces from the Hazard Module onto our structure to obtain the response:
     g = float(386)  # here we are defining gravity for in/s^2
@@ -321,6 +336,7 @@ if __name__ == "__main__":
     #logging.basicConfig()
     main(sys.argv[1:])
     #main(inputfile, outputfile)
+
 
 
 
