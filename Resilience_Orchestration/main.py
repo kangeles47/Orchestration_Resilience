@@ -192,6 +192,15 @@ def main(argv, other_stuff=0):
     #for i in spaces1:
         #print i, len(spaces1[i]), spaces1[i]
 
+    #This calls the queries which give us back the spatial information from the ifcxml for beams and columns in our model:
+    Column_info=graph_data.get_dim_columns(SGA_Based_Graph)
+    Beam_info = graph_data.get_dim_beams(SGA_Based_Graph)
+
+
+    #Embodied energy of structural components:
+    #First we need to filter through our dictionaries to find the spatial info we need:
+
+
     # Call Green Scale..................................................................................................
     # Running t-he GS Tool (it has been updated to 2016 Revit) will need to be added as this project progresses
     GreenScale_InitialRun = 0  # Change flag once first run is complete
@@ -228,7 +237,7 @@ def main(argv, other_stuff=0):
     eng=matlab.engine.start_matlab() #start MATLAB engine for Python
     eng.cd(r'D:\Users\Karen\Documents\MATLAB\RSB\GreenResilienceMATLAB_2') #Here you specify path to folder where m-file is located
     #Define input variables for the MATLAB function:
-    FilePath='D:\Users\Karen\Documents\Revit 2017\RC_FRAME_INFILL' #this is the file path to the full RC Model, needed for pre-analysis function
+    FilePath='D:\Users\Karen\Documents\Revit 2017\RC_FRAME' #this is the file path to the full RC Model, needed for pre-analysis function
     units=3 #Define units:
     #These are all of the possible unit combinations:
     #lb,in,F=1  lb,ft,F=2   kip,in,F=3  kip,ft,F=4
@@ -243,7 +252,7 @@ def main(argv, other_stuff=0):
     struct_wall_flag=1 #Ask the user if they need to consider structural walls: 0==false, 1==true
     wall_type='Masonry' #This is a query to ask what kind of wall system is being used (leaving as a user-defined option so that we can create a library of options in the future)
     #Here is the material information we would need from Revit in order to do this:
-    E=0.05*3372.13 #The modulus of elasticity in ksi
+    E=0.4*3372.13 #The modulus of elasticity in ksi
     u=0.17 #Poisson's ratio
     a=0.00001 #The thermal coefficient
     rho=150.28 #material density in lb/ft^3
@@ -336,9 +345,3 @@ if __name__ == "__main__":
     #logging.basicConfig()
     main(sys.argv[1:])
     #main(inputfile, outputfile)
-
-
-
-
-
-
