@@ -83,7 +83,7 @@ class GraphData():
         for row in USO_New.query("""SELECT ?s ?o
             WHERE { ?s ?p ?o .}""",
                 initBindings={'p': URIRef('http://www.sw.org/UBO#hasSpaceMember')}):
-            print "row: ", row
+            #print "row: ", row
             if row[0] not in spaces_dict:
                 spaces_dict[row[0]] = [row[1]]
             else:
@@ -92,7 +92,47 @@ class GraphData():
                 spaces_dict[row[0]] = temp
 
         return spaces_dict
+    #in the above query --> s (subject) is whatever comes after ns1.
+    # p (predicate): since p is being defined with a URI for SpaceMembers, the query will go looking for predicates of hasSpaceMember
+    # o (object): what we want back is information about each space... so here o are the different spaces in each SpaceCollection with hasSpaceMember
 
+#In the following query, we are asking for the parser to go through and do the following:
+    #1) Go through each subject and select the ones that have a predicate "hasType" = "Column"
+    #2) Now that we have identified all of these components, grab the "hasValue" values (literals)...in this case they are a dictionary of all the info for the column
+    def get_dim_columns(self, USO_New):
+        dimC_dict = dict()
+        typeURI = URIRef('http://www.sw.org/UBO#hasType')
+        value = URIRef('http://www.sw.org/UBO#hasValue')
+        for row in USO_New.query("""SELECT ?s ?info
+            WHERE { ?s ?typeURI "Column" .
+                    ?s ?value ?info}""",
+                initBindings={'typeURI': URIRef('http://www.sw.org/UBO#hasType'),'value':URIRef('http://www.sw.org/UBO#hasValue')}):
+            #print "row: ", row
+            if row[0] not in dimC_dict:
+                dimC_dict[row[0]] = [row[1]]
+            else:
+                temp = dimC_dict[row[0]]
+                temp.append(row[1])
+                dimC_dict[row[0]] = temp
 
+        return dimC_dict
 
-# You can continue to write whatever ones you need, including latitude/longitude, etc.
+#Now doing the same for the beams:
+
+    def get_dim_beams(self, USO_New):
+        dimB_dict = dict()
+        type = URIRef('http://www.sw.org/UBO#hasType')
+        value = URIRef('http://www.sw.org/UBO#hasValue')
+        for row in USO_New.query("""SELECT ?s ?info
+            WHERE { ?s ?type "Beam" .
+                    ?s ?value ?info}""",
+                initBindings={'type': URIRef('http://www.sw.org/UBO#hasType'),'value':URIRef('http://www.sw.org/UBO#hasValue')}):
+            #print "row: ", row
+            if row[0] not in dimB_dict:
+                dimB_dict[row[0]] = [row[1]]
+            else:
+                temp = dimB_dict[row[0]]
+                temp.append(row[1])
+                dimB_dict[row[0]] = temp
+
+        return dimB_dict
